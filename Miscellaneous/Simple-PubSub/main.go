@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 type DataEvent struct {
 	Data  interface{}
 	Topic string
+	Stat  bool
 }
 
 // DataChannel is a channel which can accept an DataEvent
@@ -48,6 +50,10 @@ func (eb *EventBus) Subscribe(topic string, ch DataChannel) {
 	eb.rm.Unlock()
 }
 
+func (eb *EventBus) ChangeBool() {
+	eb.Stat = true
+}
+
 var eb = &EventBus{
 	subscribers: map[string]DataChannelSlice{},
 }
@@ -63,6 +69,11 @@ func publishTo(topic string, data string) {
 	}
 }
 
+func publishToWithTimeout(topic string, data string) {
+	time.Sleep(time.Second * 2)
+	eb.Publish(topic, data)
+}
+
 func main() {
 	ch1 := make(chan DataEvent)
 	ch2 := make(chan DataEvent)
@@ -74,12 +85,19 @@ func main() {
 
 	go publishTo("topic1", "Hello topic 1!")
 	go publishTo("topic2", "I A M T H E O N L Y V A L I D T O P I C")
+	go publishTo("topic1", "MONSIEUR TOPIC")
+
+	go publishToWithTimeout("topic1", "END")
 
 	for {
 		select {
 		case d := <-ch1:
 			go printDataEvent("ch1", d)
 		case d := <-ch2:
+
+			if d.Stat == true {
+				log.Fatal("FINISHED")
+			}
 			go printDataEvent("ch2", d)
 		case d := <-ch3:
 			go printDataEvent("ch3", d)
